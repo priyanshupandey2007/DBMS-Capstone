@@ -7,7 +7,10 @@
     },
     "client": {
       "root": "client",
-      "framework": "vite"
+      "framework": "vite",
+      "installCommand": "npm install",
+      "buildCommand": "npm run build",
+      "outputDirectory": "dist"
     }
   },
   "rewrites": [
@@ -25,4 +28,3 @@
     }
   ]
 }
-
