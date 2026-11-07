@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block title %}Leave Applications & Workflow | TechNova EMS{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 1.5rem;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 style="font-size: 1.35rem; font-weight: 800; color: #0f172a;">Leave Management & Approvals</h1>
+      <p style="font-size: 0.775rem; color: #64748b;">
+        Database constraints enforce <code>end_date &gt;= start_date</code> and application logic prevents overlapping leave windows.
+      </p>
+    </div>
+  </div>
+
+  <!-- Status Tabs -->
+  <div class="toolbar">
+    <div style="display: flex; gap: 0.35rem;">
+      <a href="{{ url_for('admin_leaves') }}" class="btn btn-sm {% if not selected_status %}btn-primary{% else %}btn-secondary{% endif %}">All</a>
+      <a href="{{ url_for('admin_leaves', status='Pending') }}" class="btn btn-sm {% if selected_status == 'Pending' %}btn-primary{% else %}btn-secondary{% endif %}">Pending</a>
+      <a href="{{ url_for('admin_leaves', status='Approved') }}" class="btn btn-sm {% if selected_status == 'Approved' %}btn-primary{% else %}btn-secondary{% endif %}">Approved</a>
+      <a href="{{ url_for('admin_leaves', status='Rejected') }}" class="btn btn-sm {% if selected_status == 'Rejected' %}btn-primary{% else %}btn-secondary{% endif %}">Rejected</a>
+    </div>
+
+    <div style="font-size: 0.75rem; color: #64748b; font-family: monospace;">
+      {{ leaves | length }} requests listed
+    </div>
+  </div>
+
+  <!-- Leaves Table -->
+  <div class="card" style="padding: 0; overflow: hidden;">
+    <div class="table-responsive" style="border: none;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Request ID</th>
+            <th>Employee</th>
+            <th>Type</th>
+            <th>Period & Duration</th>
+            <th>Reason</th>
+            <th>Applied Date</th>
+            <th>Status</th>
+            <th style="text-align: right;">Action / Review</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for leave in leaves %}
+          <tr>
+            <td style="font-family: monospace; font-weight: 700; color: #1e40af;">LR-{{ "%04d" | format(leave.leave_id) }}</td>
+            <td>
+              <div style="font-weight: 700; color: #0f172a;">{{ leave.employee_name }}</div>
+              <div style="font-size: 0.7rem; color: #64748b;">{{ leave.department_name }}</div>
+            </td>
+            <td style="font-weight: 600;">{{ leave.leave_type }}</td>
+            <td>
+              <div style="font-family: monospace; color: #334155;">{{ leave.start_date }} to {{ leave.end_date }}</div>
+              <div style="font-size: 0.7rem; color: #1e40af; font-weight: 700;">{{ leave.duration_days }} Days</div>
+            </td>
+            <td style="max-width: 250px; font-size: 0.75rem; color: #475569;">{{ leave.reason or 'No reason specified' }}</td>
+            <td style="font-family: monospace; color: #64748b;">{{ leave.applied_date }}</td>
+            <td>
+              {% if leave.leave_status == 'Approved' %}
+              <span class="badge badge-paid">Approved</span>
+              {% elif leave.leave_status == 'Pending' %}
+              <span class="badge badge-pending">Pending</span>
+              {% else %}
+              <span class="badge badge-rejected">Rejected</span>
+              {% endif %}
+              {% if leave.action_comment %}
+              <div style="font-size: 0.675rem; color: #94a3b8; font-style: italic;">"{{ leave.action_comment }}"</div>
+              {% endif %}
+            </td>
+            <td style="text-align: right; white-space: nowrap;">
+              {% if leave.leave_status == 'Pending' %}
+              <form method="POST" action="{{ url_for('admin_leave_status', leave_id=leave.leave_id) }}" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
+                <input type="hidden" name="status" value="Approved">
+                <input type="text" name="comment" placeholder="Optional remark" class="form-control" style="width: 130px; display: inline-block; padding: 0.2rem 0.4rem; font-size: 0.7rem;">
+                <button type="submit" class="btn btn-success btn-sm">Approve</button>
+              </form>
+              <form method="POST" action="{{ url_for('admin_leave_status', leave_id=leave.leave_id) }}" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
+                <input type="hidden" name="status" value="Rejected">
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Reject this leave request?');">Reject</button>
+              </form>
+              {% else %}
+              <span style="font-size: 0.7rem; color: #94a3b8;">Reviewed by {{ leave.action_by or 'Admin' }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; color: #94a3b8; padding: 2rem;">No leave applications found for this filter.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+

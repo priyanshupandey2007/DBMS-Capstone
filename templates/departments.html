@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}Departments | TechNova EMS{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 1.5rem;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 style="font-size: 1.35rem; font-weight: 800; color: #0f172a;">Department Architecture</h1>
+      <p style="font-size: 0.775rem; color: #64748b;">
+        Normalized 3NF relational entity isolating departments to eliminate repeating textual redundancies.
+      </p>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; align-items: start;">
+    
+    <!-- Add / Edit Department Form -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">{{ 'Edit Department' if edit_dept else 'Create Department' }}</h2>
+      </div>
+
+      <form method="POST" action="{{ url_for('department_edit', dept_id=edit_dept.department_id) if edit_dept else url_for('departments_list') }}">
+        <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
+
+        <div class="form-group">
+          <label class="form-label" for="department_name">Department Name (UNIQUE) *</label>
+          <input type="text" id="department_name" name="department_name" value="{{ edit_dept.department_name if edit_dept else '' }}" class="form-control" required placeholder="e.g. Research & Innovation">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="description">Functional Description</label>
+          <textarea id="description" name="description" rows="3" class="form-control" placeholder="Outline operations and responsibilities...">{{ edit_dept.description if edit_dept else '' }}</textarea>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+          {% if edit_dept %}
+          <a href="{{ url_for('departments_list') }}" class="btn btn-secondary btn-sm">Cancel</a>
+          {% endif %}
+          <button type="submit" class="btn btn-primary btn-sm">
+            {{ 'Update Department' if edit_dept else 'Save Department' }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Department Roster Table -->
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <div class="table-responsive" style="border: none;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Department Name</th>
+              <th>Description</th>
+              <th>Staff Count</th>
+              <th style="text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for dept in departments %}
+            <tr>
+              <td style="font-family: monospace; font-weight: 700; color: #1e40af;">#{{ dept.department_id }}</td>
+              <td style="font-weight: 700; color: #0f172a;">{{ dept.department_name }}</td>
+              <td style="font-size: 0.725rem; color: #64748b; max-width: 250px;">{{ dept.description or 'No description' }}</td>
+              <td>
+                <span style="font-weight: 700; color: #0f172a; font-family: monospace;">{{ dept.total_employees }}</span> staff
+                <span style="font-size: 0.685rem; color: #059669;">({{ dept.active_employees }} active)</span>
+              </td>
+              <td style="text-align: right; white-space: nowrap;">
+                <a href="{{ url_for('departments_list', edit=dept.department_id) }}" class="btn btn-secondary btn-sm">Edit</a>
+                <form method="POST" action="{{ url_for('department_delete', dept_id=dept.department_id) }}" style="display: inline;" onsubmit="return confirmDelete('Delete department {{ dept.department_name }}?');">
+                  <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
+                  <button type="submit" class="btn btn-danger btn-sm" {% if dept.total_employees > 0 %}title="Cannot delete: employees are currently assigned to this department"{% endif %}>
+                    Delete
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" style="text-align: center; color: #94a3b8; padding: 2rem;">No departments defined.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+

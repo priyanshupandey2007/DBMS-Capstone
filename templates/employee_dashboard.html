@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% block title %}My Dashboard | Employee Portal{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 1.5rem;">
+  
+  <!-- Profile Banner -->
+  <div class="card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <div style="width: 56px; height: 56px; border-radius: 12px; background: #1e40af; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800;">
+        {{ profile.employee_name[0] | upper }}
+      </div>
+      <div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <h1 style="font-size: 1.25rem; font-weight: 800; color: #0f172a;">{{ profile.employee_name }}</h1>
+          <span class="badge badge-present">{{ profile.employment_status }}</span>
+        </div>
+        <p style="font-size: 0.775rem; color: #475569; margin-top: 0.15rem;">
+          {{ profile.designation }} &bull; <strong style="color: #1e40af;">{{ profile.department_name }}</strong>
+        </p>
+        <p style="font-size: 0.7rem; color: #94a3b8; font-family: monospace;">
+          EMP-{{ "%04d" | format(profile.employee_id) }} &bull; Joined: {{ profile.joining_date }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Quick Check-In / Check-Out Controls -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.85rem 1.25rem; text-align: center;">
+      <div style="font-size: 0.725rem; font-weight: 700; color: #64748b; margin-bottom: 0.4rem;">
+        Today's Punch Status ({{ today_str }})
+      </div>
+      
+      <div style="display: flex; gap: 0.5rem; justify-content: center;">
+        <form method="POST" action="{{ url_for('employee_punch_in') }}">
+          <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
+          <button type="submit" class="btn btn-success btn-sm" {% if today_attendance and today_attendance.check_in %}disabled style="opacity: 0.6;"{% endif %}>
+            {{ 'Checked In ✓' if today_attendance and today_attendance.check_in else 'Punch In' }}
+          </button>
+        </form>
+
+        <form method="POST" action="{{ url_for('employee_punch_out') }}">
+          <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
+          <button type="submit" class="btn btn-primary btn-sm" {% if not today_attendance or not today_attendance.check_in or today_attendance.check_out %}disabled style="opacity: 0.6;"{% endif %}>
+            {{ 'Checked Out ✓' if today_attendance and today_attendance.check_out else 'Punch Out' }}
+          </button>
+        </form>
+      </div>
+
+      {% if today_attendance and today_attendance.check_in %}
+      <div style="font-size: 0.685rem; font-family: monospace; color: #047857; margin-top: 0.4rem;">
+        In: {{ today_attendance.check_in }} {% if today_attendance.check_out %}| Out: {{ today_attendance.check_out }}{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Attendance Metrics for Current Month -->
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-header">
+        <span class="stat-label">Effective Present Days</span>
+        <div class="stat-icon blue">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="m9 16 2 2 4-4"/></svg>
+        </div>
+      </div>
+      <div class="stat-value">{{ att_summary.effective_days }} Days</div>
+      <div class="stat-subtext">Computed via <code>fn_total_present_days</code></div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <span class="stat-label">Working Days in Month</span>
+        <div class="stat-icon purple">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+      </div>
+      <div class="stat-value">{{ working_days }} Days</div>
+      <div class="stat-subtext">Excludes Sundays (<code>fn_working_days</code>)</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <span class="stat-label">Absences / Lates</span>
+        <div class="stat-icon amber">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+        </div>
+      </div>
+      <div class="stat-value" style="color: #b45309;">{{ att_summary.absent_count }}d / {{ att_summary.late_count }}l</div>
+      <div class="stat-subtext">{{ att_summary.half_day_count }} half-days logged</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <span class="stat-label">Latest Net Pay</span>
+        <div class="stat-icon emerald">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/></svg>
+        </div>
+      </div>
+      <div class="stat-value">
+        {% if latest_payroll %}
+        ₹{{ "{:,.0f}".format(latest_payroll.net_salary) }}
+        {% else %}
+        —
+        {% endif %}
+      </div>
+      <div class="stat-subtext">
+        {% if latest_payroll %}
+        {{ month_names[latest_payroll.month] }} {{ latest_payroll.year }} ({{ latest_payroll.payment_status }})
+        {% else %}
+        No payroll slip yet
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Leaves & Payroll Cards -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.5rem;">
+    
+    <!-- Recent Leaves -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">My Recent Leave Requests</h2>
+        <a href="{{ url_for('employee_leaves') }}" style="font-size: 0.75rem; color: #1e40af; font-weight: 600; text-decoration: none;">Apply Leave</a>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Dates</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for l in recent_leaves %}
+            <tr>
+              <td style="font-weight: 600;">{{ l.leave_type }}</td>
+              <td style="font-family: monospace; font-size: 0.725rem;">{{ l.start_date }} to {{ l.end_date }} ({{ l.duration_days }}d)</td>
+              <td>
+                {% if l.leave_status == 'Approved' %}
+                <span class="badge badge-paid">Approved</span>
+                {% elif l.leave_status == 'Pending' %}
+                <span class="badge badge-pending">Pending</span>
+                {% else %}
+                <span class="badge badge-rejected">Rejected</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="3" style="text-align: center; color: #94a3b8; padding: 1.5rem;">No leave requests filed yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Latest Payslip Callout -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Latest Salary Statement</h2>
+        <a href="{{ url_for('employee_payroll') }}" style="font-size: 0.75rem; color: #1e40af; font-weight: 600; text-decoration: none;">All Slips</a>
+      </div>
+
+      {% if latest_payroll %}
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.5rem;">
+          <span style="color: #64748b;">Period:</span>
+          <strong style="color: #0f172a;">{{ month_names[latest_payroll.month] }} {{ latest_payroll.year }}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.5rem;">
+          <span style="color: #64748b;">Basic Pay:</span>
+          <span style="font-family: monospace;">₹{{ "{:,.2f}".format(latest_payroll.basic_salary) }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.5rem;">
+          <span style="color: #64748b;">Allowances:</span>
+          <span style="font-family: monospace; color: #059669;">+₹{{ "{:,.2f}".format(latest_payroll.allowances) }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.5rem;">
+          <span style="color: #64748b;">Deductions:</span>
+          <span style="font-family: monospace; color: #dc2626;">-₹{{ "{:,.2f}".format(latest_payroll.deductions) }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 1rem; font-weight: 800; border-top: 1px solid #cbd5e1; padding-top: 0.5rem; margin-top: 0.5rem;">
+          <span style="color: #0f172a;">Net Disbursed:</span>
+          <span style="font-family: monospace; color: #1e40af;">₹{{ "{:,.2f}".format(latest_payroll.net_salary) }}</span>
+        </div>
+
+        <div style="margin-top: 1rem; text-align: right;">
+          <a href="{{ url_for('salary_slip_view', payroll_id=latest_payroll.payroll_id) }}" class="btn btn-primary btn-sm" target="_blank">
+            View & Print Official Payslip
+          </a>
+        </div>
+      </div>
+      {% else %}
+      <div style="text-align: center; color: #94a3b8; padding: 2rem;">No salary slips generated for your profile yet.</div>
+      {% endif %}
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+

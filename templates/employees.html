@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}Employee Directory | TechNova EMS{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 1.25rem;">
+  
+  <!-- Header -->
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 style="font-size: 1.35rem; font-weight: 800; color: #0f172a;">Employee Directory</h1>
+      <p style="font-size: 0.775rem; color: #64748b;">
+        Complete CRUD management adhering to 3NF schema, check constraints, and cascade delete safeguards.
+      </p>
+    </div>
+    <a href="{{ url_for('employee_add') }}" class="btn btn-primary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+      <span>Add New Employee</span>
+    </a>
+  </div>
+
+  <!-- Filter & Search Toolbar -->
+  <form method="GET" action="{{ url_for('employees_list') }}" class="toolbar">
+    <div class="toolbar-filters">
+      <div style="position: relative; width: 240px;">
+        <input type="text" name="search" value="{{ search_query }}" class="form-control" placeholder="Search by name, email, role..." style="padding-left: 2rem;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 0.65rem; top: 0.7rem; color: #94a3b8;"><circle cx="11" cy="11" r="8"/><line x1="21" x2="21" y1="21" y2="16.65"/></svg>
+      </div>
+
+      <select name="department_id" class="form-control" style="width: auto;">
+        <option value="">All Departments</option>
+        {% for dept in departments %}
+        <option value="{{ dept.department_id }}" {% if selected_dept == dept.department_id %}selected{% endif %}>
+          {{ dept.department_name }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <select name="status" class="form-control" style="width: auto;">
+        <option value="">All Statuses</option>
+        <option value="Active" {% if selected_status == 'Active' %}selected{% endif %}>Active</option>
+        <option value="Inactive" {% if selected_status == 'Inactive' %}selected{% endif %}>Inactive</option>
+      </select>
+
+      <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+      {% if search_query or selected_dept or selected_status %}
+      <a href="{{ url_for('employees_list') }}" class="btn btn-secondary btn-sm" style="color: #dc2626;">Reset</a>
+      {% endif %}
+    </div>
+
+    <div style="font-size: 0.75rem; color: #64748b; font-family: monospace;">
+      {{ total_count }} total matches
+    </div>
+  </form>
+
+  <!-- Employee Table -->
+  <div class="card" style="padding: 0; overflow: hidden;">
+    <div class="table-responsive" style="border: none;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Emp ID</th>
+            <th>Employee Info</th>
+            <th>Department & Designation</th>
+            <th>Basic Salary</th>
+            <th>Joining Date</th>
+            <th>Status</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for emp in employees %}
+          <tr>
+            <td style="font-family: monospace; font-weight: 700; color: #1e40af;">
+              EMP-{{ "%04d" | format(emp.employee_id) }}
+            </td>
+            <td>
+              <a href="{{ url_for('employee_detail', emp_id=emp.employee_id) }}" style="font-weight: 700; color: #0f172a; text-decoration: none;">
+                {{ emp.employee_name }}
+              </a>
+              <div style="font-size: 0.7rem; color: #64748b;">{{ emp.email }} &bull; {{ emp.phone or 'No phone' }}</div>
+            </td>
+            <td>
+              <div style="font-weight: 600; color: #334155;">{{ emp.designation }}</div>
+              <div style="font-size: 0.7rem; color: #64748b;">{{ emp.department_name or 'Unassigned' }}</div>
+            </td>
+            <td style="font-family: monospace; font-weight: 700; color: #0f172a;">
+              ₹{{ "{:,.2f}".format(emp.basic_salary) }}
+            </td>
+            <td style="font-family: monospace; color: #64748b;">{{ emp.joining_date }}</td>
+            <td>
+              {% if emp.employment_status == 'Active' %}
+              <span class="badge badge-present">Active</span>
+              {% else %}
+              <span class="badge badge-absent" style="background:#f1f5f9;color:#64748b;border-color:#cbd5e1;">Inactive</span>
+              {% endif %}
+            </td>
+            <td style="text-align: right; white-space: nowrap;">
+              <a href="{{ url_for('employee_detail', emp_id=emp.employee_id) }}" class="btn btn-secondary btn-sm" title="View Profile & Audit Trail">
+                View
+              </a>
+              <a href="{{ url_for('employee_edit', emp_id=emp.employee_id) }}" class="btn btn-secondary btn-sm" title="Edit Profile & Salary">
+                Edit
+              </a>
+              <form method="POST" action="{{ url_for('employee_toggle_status', emp_id=emp.employee_id) }}" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
+                <button type="submit" class="btn btn-secondary btn-sm" title="Soft Delete: Toggle Active/Inactive">
+                  {{ 'Deactivate' if emp.employment_status == 'Active' else 'Activate' }}
+                </button>
+              </form>
+              <form method="POST" action="{{ url_for('employee_delete', emp_id=emp.employee_id) }}" style="display: inline;" onsubmit="return confirmDelete('PERMANENT CASCADE WARNING:\nDeleting {{ emp.employee_name }} will trigger ON DELETE CASCADE in MySQL and permanently erase:\n- Attendance logs\n- Leave applications\n- Payroll records\n- User account\n\nAre you sure you want to proceed?');">
+                <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
+                <button type="submit" class="btn btn-danger btn-sm" title="Hard Delete with ON DELETE CASCADE">
+                  Delete
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" style="text-align: center; color: #94a3b8; padding: 2rem;">No employee records match the filter criteria.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-top: 1px solid #e2e8f0; font-size: 0.775rem;">
+      <span style="color: #64748b;">Showing page {{ current_page }} of {{ total_pages }}</span>
+      <div style="display: flex; gap: 0.35rem;">
+        {% for p in range(1, total_pages + 1) %}
+        <a href="{{ url_for('employees_list', page=p, search=search_query, department_id=selected_dept, status=selected_status) }}" class="btn btn-sm {% if p == current_page %}btn-primary{% else %}btn-secondary{% endif %}">
+          {{ p }}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+

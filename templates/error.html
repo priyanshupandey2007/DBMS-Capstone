@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}{{ code }} - {{ title }} | TechNova EMS{% endblock %}
+
+{% block content %}
+<div style="min-height: 60vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 2rem;">
+  <div style="max-width: 500px;">
+    <div style="font-size: 4rem; font-weight: 900; font-family: monospace; color: {% if code == 403 %}#dc2626{% elif code == 404 %}#1e40af{% else %}#b45309{% endif %};">
+      {{ code }}
+    </div>
+    <h1 style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin-top: 0.5rem;">{{ title }}</h1>
+    <p style="font-size: 0.85rem; color: #64748b; margin-top: 0.5rem; line-height: 1.6;">
+      {{ message }}
+    </p>
+
+    <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: center;">
+      <a href="javascript:history.back()" class="btn btn-secondary">Go Back</a>
+      {% if session.get('role') == 'Admin' %}
+      <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary">Admin Dashboard</a>
+      {% elif session.get('role') == 'Employee' %}
+      <a href="{{ url_for('employee_dashboard') }}" class="btn btn-primary">Employee Dashboard</a>
+      {% else %}
+      <a href="{{ url_for('login') }}" class="btn btn-primary">Sign In</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+

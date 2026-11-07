@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TechNova | Smart Employee Management System{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231e40af'><path d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>">
+</head>
+<body>
+  {% if session.get('user_id') %}
+  <div class="app-container">
+    <!-- Fixed Sidebar -->
+    <aside class="sidebar">
+      <div>
+        <div class="sidebar-header">
+          <div class="brand-logo">TN</div>
+          <div class="brand-text">
+            <h1>TechNova</h1>
+            <p>Smart Employee MS</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-menu">
+          {% if session.get('role') == 'Admin' %}
+          <div class="sidebar-section-title">HR Administration</div>
+          <a href="{{ url_for('admin_dashboard') }}" class="sidebar-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+            <div class="sidebar-link-content">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+              <span>Dashboard</span>
+            </div>
+          </a>
+          <a href="{{ url_for('employees_list') }}" class="sidebar-link {% if 'employee' in request.endpoint and 'dashboard' not in request.endpoint %}active{% endif %}">
+            <div class="sidebar-link-content">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>Employees</span>
+            </div>
+          </a>
+          <a href="{{ url_for('departments_list') }}" class="sidebar-link {% if 'department' in request.endpoint %}active{% endif %}">
+            <div class="sidebar-link-content">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+              <span>Departments</span>
+            </div>
+          </a>
+          <a href="{{ url_for('admin_attendance') }}" class="sidebar-link {% if 'attendance' in request.endpoint and session.get('role') == 'Admin' %}active{% endif %}">
+            <div class="sidebar-link-content">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
+              <span>Attendance</span>
+            </div>
+          </a>
+          <a href="{{ url_for('admin_leaves') }}" class="sidebar-link {% if 'leave' in request.endpoint and session.get('role') == 'Admin' %}active{% endif %}">
+            <div class="sidebar-link-content">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              <span>Leave Approvals</span>
+            </div>
+          </a>
+          <a href="{{ url_for('admin_payroll') }}" class="sidebar-link {% if 'payroll' in request.endpoint and session.get('role') == 'Admin' %}active{% endif %}">
+            <div class="sidebar-link-content">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+              <span>Monthly Payroll</span>
+            </div>
+          </a>
+          <a href="{{ url_for('reports_view') }}" class="sidebar-link {% if 'report' in request.endpoint %}active{% endif %}">
+            <div class="sidebar-link-content">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>
+              <span>DBMS Viva Reports</span>
+            </div>
+            <span class="badge-viva">Viva 10+</span>
+          </a>
+          {% else %}
+          <div class="sidebar-section-title">Employee Self-Service</div>
+          <a href="{{ url_for('employee_dashboard') }}" class="sidebar-link {% if request.endpoint == 'employee_dashboard' %}active{% endif %}">
+            <div class="sidebar-link-content">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>My Dashboard</span>
+            </div>
+          </a>
+          <a href="{{ url_for('employee_attendance') }}" class="sidebar-link {% if request.endpoint == 'employee_attendance' %}active{% endif %}">
+            <div class="sidebar-link-content">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+              <span>My Attendance</span>
+            </div>
+          </a>
+          <a href="{{ url_for('employee_leaves') }}" class="sidebar-link {% if request.endpoint == 'employee_leaves' %}active{% endif %}">
+            <div class="sidebar-link-content">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span>Apply Leave</span>
+            </div>
+          </a>
+          <a href="{{ url_for('employee_payroll') }}" class="sidebar-link {% if request.endpoint == 'employee_payroll' %}active{% endif %}">
+            <div class="sidebar-link-content">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/></svg>
+              <span>My Salary Slips</span>
+            </div>
+          </a>
+          <a href="{{ url_for('employee_profile') }}" class="sidebar-link {% if request.endpoint == 'employee_profile' %}active{% endif %}">
+            <div class="sidebar-link-content">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+              <span>My Profile</span>
+            </div>
+          </a>
+          {% endif %}
+        </nav>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="db-pill">
+          <strong>DBMS Capstone 2026</strong>
+          <span>MySQL 8 &bull; Flask &bull; 3NF</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Container -->
+    <div class="main-wrapper">
+      <header class="top-navbar">
+        <div class="navbar-left">
+          <button class="mobile-menu-btn" aria-label="Toggle menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="18" y2="18"/></svg>
+          </button>
+          <span class="nav-org-name">{{ config.COMPANY_NAME }}</span>
+        </div>
+
+        <div class="navbar-right">
+          <div class="user-badge">
+            <div class="avatar-circle">
+              {{ session.get('username')[0] | upper }}
+            </div>
+            <div class="user-info-text">
+              <div class="user-name">{{ session.get('employee_name') or session.get('username') }}</div>
+              <span class="user-role-tag {% if session.get('role') == 'Admin' %}role-admin{% else %}role-employee{% endif %}">
+                {{ session.get('role') }}
+              </span>
+            </div>
+          </div>
+
+          <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-sm" title="Sign out">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+            <span>Logout</span>
+          </a>
+        </div>
+      </header>
+
+      <main class="content-area">
+        <!-- Flash Notifications -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+          <div class="flash-container">
+            {% for category, message in messages %}
+            <div class="flash-message flash-{{ category }}">
+              <span>{{ message }}</span>
+              <button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:inherit;">&times;</button>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+  {% else %}
+    <!-- Logged out layout (e.g. login page) -->
+    {% block auth_content %}{% endblock %}
+  {% endif %}
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
+

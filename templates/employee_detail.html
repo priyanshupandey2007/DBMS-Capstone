@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}{{ employee.employee_name }} | Employee Detail{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 1.5rem; max-width: 1000px; margin: 0 auto;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <a href="{{ url_for('employees_list') }}" style="font-size: 0.775rem; color: #1e40af; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem; margin-bottom: 0.35rem;">
+        &larr; Back to Directory
+      </a>
+      <h1 style="font-size: 1.35rem; font-weight: 800; color: #0f172a;">{{ employee.employee_name }}</h1>
+      <p style="font-size: 0.775rem; color: #64748b;">
+        Employee ID: <code style="font-weight: 700;">EMP-{{ "%04d" | format(employee.employee_id) }}</code> &bull; Role: {{ employee.designation }} &bull; Department: {{ employee.department_name }}
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+      <a href="{{ url_for('employee_edit', emp_id=employee.employee_id) }}" class="btn btn-secondary">
+        Edit Profile
+      </a>
+    </div>
+  </div>
+
+  <!-- Profile Detail Card -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Personal & Employment Information</h2>
+      <span class="badge {% if employee.employment_status == 'Active' %}badge-present{% else %}badge-absent{% endif %}">
+        {{ employee.employment_status }}
+      </span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; font-size: 0.8rem;">
+      <div>
+        <span style="color: #64748b; display: block; font-size: 0.725rem;">Email Address</span>
+        <strong style="color: #0f172a;">{{ employee.email }}</strong>
+      </div>
+      <div>
+        <span style="color: #64748b; display: block; font-size: 0.725rem;">Phone Number</span>
+        <strong style="color: #0f172a;">{{ employee.phone or 'Not Provided' }}</strong>
+      </div>
+      <div>
+        <span style="color: #64748b; display: block; font-size: 0.725rem;">Gender</span>
+        <strong style="color: #0f172a;">{{ employee.gender }}</strong>
+      </div>
+      <div>
+        <span style="color: #64748b; display: block; font-size: 0.725rem;">Date of Birth</span>
+        <strong style="color: #0f172a; font-family: monospace;">{{ employee.date_of_birth or '—' }}</strong>
+      </div>
+      <div>
+        <span style="color: #64748b; display: block; font-size: 0.725rem;">Joining Date</span>
+        <strong style="color: #0f172a; font-family: monospace;">{{ employee.joining_date }}</strong>
+      </div>
+      <div>
+        <span style="color: #64748b; display: block; font-size: 0.725rem;">Basic Base Salary</span>
+        <strong style="color: #0f172a; font-family: monospace; font-size: 1rem;">₹{{ "{:,.2f}".format(employee.basic_salary) }}</strong>
+      </div>
+      <div style="grid-column: 1 / -1;">
+        <span style="color: #64748b; display: block; font-size: 0.725rem;">Residential Address</span>
+        <strong style="color: #0f172a;">{{ employee.address or 'No address registered' }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Salary Revision Audit Log (Trigger trg_employees_after_salary_update) -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Salary Revision Audit Trail</span>
+      </h2>
+      <span style="font-size: 0.7rem; font-family: monospace; color: #7e22ce; background: #faf5ff; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid #e9d5ff;">
+        MySQL Trigger: trg_employees_after_salary_update
+      </span>
+    </div>
+
+    <div class="viva-alert">
+      <strong>DBMS Viva Concept:</strong> This audit trail is populated automatically by an <code>AFTER UPDATE</code> trigger on the <code>employees</code> table whenever <code>NEW.basic_salary &lt;&gt; OLD.basic_salary</code>. Zero application-level code writes to this table directly, guaranteeing 100% compliance even from raw MySQL CLI updates.
+    </div>
+
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Audit ID</th>
+            <th>Revision Date & Time</th>
+            <th>Previous Salary</th>
+            <th>New Salary</th>
+            <th>Revision Delta</th>
+            <th>Updated By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in audit_logs %}
+          {% set delta = log.new_salary - log.old_salary %}
+          <tr>
+            <td style="font-family: monospace;">#{{ log.audit_id }}</td>
+            <td style="font-family: monospace; color: #475569;">{{ log.changed_at }}</td>
+            <td style="font-family: monospace; color: #64748b;">₹{{ "{:,.2f}".format(log.old_salary) }}</td>
+            <td style="font-family: monospace; font-weight: 700; color: #0f172a;">₹{{ "{:,.2f}".format(log.new_salary) }}</td>
+            <td style="font-family: monospace; font-weight: 700; color: {% if delta >= 0 %}#059669{% else %}#dc2626{% endif %};">
+              {{ "+₹{:,.2f}".format(delta) if delta >= 0 else "-₹{:,.2f}".format(delta | abs) }}
+            </td>
+            <td><code style="font-size: 0.75rem;">{{ log.changed_by }}</code></td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" style="text-align: center; color: #94a3b8; padding: 1.5rem;">No historical salary modifications recorded for this employee.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+

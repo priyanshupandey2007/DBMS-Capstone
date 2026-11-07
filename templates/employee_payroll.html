@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}My Salary Slips | TechNova EMS{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 1.5rem;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 style="font-size: 1.35rem; font-weight: 800; color: #0f172a;">My Salary Statements</h1>
+      <p style="font-size: 0.775rem; color: #64748b;">
+        Historical compensation records. Strict role-based isolation guarantees only you can view your slips.
+      </p>
+    </div>
+  </div>
+
+  <div class="card" style="padding: 0; overflow: hidden;">
+    <div class="table-responsive" style="border: none;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th>Basic Salary</th>
+            <th>Allowances</th>
+            <th>Deductions</th>
+            <th>Attendance</th>
+            <th>Net Pay</th>
+            <th>Status</th>
+            <th style="text-align: right;">Official Payslip</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in slips %}
+          <tr>
+            <td style="font-weight: 700; color: #0f172a;">
+              {{ month_names[p.month] }} {{ p.year }}
+            </td>
+            <td style="font-family: monospace;">₹{{ "{:,.2f}".format(p.basic_salary) }}</td>
+            <td style="font-family: monospace; color: #059669;">+₹{{ "{:,.2f}".format(p.allowances) }}</td>
+            <td style="font-family: monospace; color: #dc2626;">-₹{{ "{:,.2f}".format(p.deductions) }}</td>
+            <td style="font-family: monospace;">
+              <span style="font-weight: 700; color: #1e40af;">{{ p.present_days }}</span> / {{ p.working_days }}d
+            </td>
+            <td style="font-family: monospace; font-weight: 800; color: #0f172a; font-size: 0.9rem;">
+              ₹{{ "{:,.2f}".format(p.net_salary) }}
+            </td>
+            <td>
+              {% if p.payment_status == 'Paid' %}
+              <span class="badge badge-paid">Paid</span>
+              {% else %}
+              <span class="badge badge-pending">Pending</span>
+              {% endif %}
+            </td>
+            <td style="text-align: right;">
+              <a href="{{ url_for('salary_slip_view', payroll_id=p.payroll_id) }}" class="btn btn-primary btn-sm" target="_blank">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                <span>View & Print</span>
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; color: #94a3b8; padding: 2rem;">No salary slips recorded for your account yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+

@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block title %}DBMS Viva Presentation Hub | TechNova EMS{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 1.5rem;">
+  
+  <!-- Banner -->
+  <div style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #0f172a 100%); color: white; padding: 1.75rem; border-radius: 14px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <div style="display: inline-block; background: rgba(255,255,255,0.15); font-size: 0.675rem; font-family: monospace; padding: 0.2rem 0.6rem; border-radius: 9999px; margin-bottom: 0.5rem;">
+          College DBMS Laboratory & Viva Master Suite
+        </div>
+        <h1 style="font-size: 1.45rem; font-weight: 800;">Academic SQL Query Explorer (10 Core Reports)</h1>
+        <p style="font-size: 0.775rem; color: #dbeafe; max-width: 700px; margin-top: 0.25rem;">
+          Every query below executes live on MySQL 8 with no ORM abstraction. Click "View SQL" to review the exact query syntax, relational algebra concept, and viva talking points for your exam.
+        </p>
+      </div>
+      <div style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 0.75rem 1.25rem; border-radius: 8px; text-align: center;">
+        <span style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: #bfdbfe;">Active Report</span>
+        <div style="font-size: 1.25rem; font-weight: 800; font-family: monospace;">#{{ active_report.id }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 280px 1fr; gap: 1.5rem; align-items: start;">
+    
+    <!-- Report Selector Navigation Menu -->
+    <div class="card" style="padding: 0.75rem;">
+      <div style="font-size: 0.685rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; padding: 0.5rem 0.5rem 0.25rem;">
+        Select Academic Report
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+        {% for r in reports_list %}
+        <a href="{{ url_for('reports_view', report_id=r.id) }}" style="display: flex; flex-direction: column; padding: 0.6rem 0.75rem; border-radius: 6px; text-decoration: none; font-size: 0.775rem; transition: background 0.15s ease; {% if r.id == active_report.id %}background: #eff6ff; border: 1px solid #bfdbfe; font-weight: 700; color: #1e40af;{% else %}color: #334155; border: 1px solid transparent;{% endif %}">
+          <span style="line-height: 1.2;">{{ r.id }}. {{ r.title }}</span>
+          <span style="font-size: 0.65rem; color: #64748b; font-family: monospace; margin-top: 0.2rem;">{{ r.category }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Active Report Details & Result View -->
+    <div style="display: flex; flex-direction: column; gap: 1rem;">
+      
+      <!-- Report Header & Viva Explanation Box -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+          <div>
+            <span style="font-size: 0.685rem; font-family: monospace; font-weight: 700; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; padding: 0.15rem 0.5rem; border-radius: 4px;">
+              {{ active_report.category }}
+            </span>
+            <h2 style="font-size: 1.2rem; font-weight: 800; color: #0f172a; margin-top: 0.4rem;">
+              {{ active_report.id }}. {{ active_report.title }}
+            </h2>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem;">
+            <!-- Print / CSV Export Buttons -->
+            <button onclick="window.print()" class="btn btn-secondary btn-sm" title="Print this report">
+              Print
+            </button>
+            <a href="{{ url_for('report_export_csv', report_id=active_report.id) }}" class="btn btn-secondary btn-sm" title="Export current results as CSV">
+              Export CSV
+            </a>
+          </div>
+        </div>
+
+        <div class="viva-alert" style="margin-bottom: 0;">
+          <strong>Viva Examiner Answer / Concept:</strong> {{ active_report.viva_concept }}
+        </div>
+      </div>
+
+      <!-- Collapsible SQL Code Block -->
+      <div class="sql-box">
+        <div class="sql-box-header">
+          <span>Executed Parameterized SQL Query (Click to collapse/expand)</span>
+          <span>SQL 8.x</span>
+        </div>
+        <div class="sql-code">{{ active_report.sql }}</div>
+      </div>
+
+      <!-- Result Set Table -->
+      <div class="card" style="padding: 0; overflow: hidden;">
+        <div style="padding: 0.75rem 1rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 0.75rem; font-weight: 700; color: #475569; display: flex; justify-content: space-between;">
+          <span>Query Output (Live MySQL Result Set)</span>
+          <span style="font-family: monospace;">{{ result_rows | length }} rows returned</span>
+        </div>
+
+        <div class="table-responsive" style="border: none;">
+          {% if result_rows and result_rows | length > 0 %}
+          <table class="data-table">
+            <thead>
+              <tr>
+                {% for col in result_rows[0].keys() %}
+                <th style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.04em;">{{ col | replace('_', ' ') }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in result_rows %}
+              <tr>
+                {% for val in row.values() %}
+                <td style="font-family: monospace; font-size: 0.775rem;">
+                  {% if val is none %}
+                  <span style="color: #94a3b8; font-style: italic;">NULL</span>
+                  {% elif val is number %}
+                  {{ "{:,.2f}".format(val) if '.' in val|string else "{:,}".format(val) }}
+                  {% else %}
+                  {{ val }}
+                  {% endif %}
+                </td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <div style="text-align: center; color: #94a3b8; padding: 2rem; font-size: 0.8rem;">Query returned 0 matching records.</div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+

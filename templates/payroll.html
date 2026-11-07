@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% block title %}Monthly Payroll & Live Calculator | TechNova EMS{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 1.5rem;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 style="font-size: 1.35rem; font-weight: 800; color: #0f172a;">Monthly Payroll & Slip Generation</h1>
+      <p style="font-size: 0.775rem; color: #64748b;">
+        Executes stored procedure <code>sp_calculate_monthly_payroll</code> with ACID transaction control & rollback safety.
+      </p>
+    </div>
+
+    <!-- Bulk Generation for All Active Employees Button -->
+    <form method="POST" action="{{ url_for('admin_payroll_generate_all') }}" onsubmit="return confirm('Execute batch transaction to generate/update payroll for ALL active employees for {{ selected_month }}/{{ selected_year }}?');">
+      <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
+      <input type="hidden" name="month" value="{{ selected_month }}">
+      <input type="hidden" name="year" value="{{ selected_year }}">
+      <button type="submit" class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Generate Payroll for All Active Employees (Transaction)</span>
+      </button>
+    </form>
+  </div>
+
+  <div class="viva-alert">
+    <strong>DBMS Transaction Note:</strong> The "Generate for All Active Employees" action executes inside a single <code>START TRANSACTION ... COMMIT</code> block. If any error occurs midway, an automatic <code>ROLLBACK</code> triggers, preserving data consistency.
+  </div>
+
+  <!-- Live Calculator & Single Employee Generator -->
+  <div class="card" style="background: #f8fafc;">
+    <h2 class="card-title" style="margin-bottom: 0.75rem;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>
+      <span>Live Calculator Preview & Single Generation</span>
+    </h2>
+
+    <form method="POST" action="{{ url_for('admin_payroll_generate_single') }}" id="calcForm" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) 130px; gap: 0.75rem; align-items: end;">
+      <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
+
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label" for="calc_emp">Select Employee *</label>
+        <select id="calc_emp" name="employee_id" class="form-control" required onchange="updateCalcPreview()">
+          {% for emp in active_employees %}
+          <option value="{{ emp.employee_id }}" data-basic="{{ emp.basic_salary }}">{{ emp.employee_name }} (₹{{ "{:,.0f}".format(emp.basic_salary) }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label" for="calc_month">Month *</label>
+        <select id="calc_month" name="month" class="form-control" onchange="updateCalcPreview()">
+          {% for m in range(1, 13) %}
+          <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ month_names[m] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label" for="calc_year">Year *</label>
+        <input type="number" id="calc_year" name="year" value="{{ selected_year }}" class="form-control" style="font-family: monospace;" onchange="updateCalcPreview()">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label" for="calc_allow">Allowances (₹)</label>
+        <input type="number" step="0.01" id="calc_allow" name="allowances" placeholder="10% auto" class="form-control" style="font-family: monospace;" oninput="updateCalcPreview()">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label" for="calc_deduct">Deductions (₹)</label>
+        <input type="number" step="0.01" id="calc_deduct" name="deductions" placeholder="5% auto" class="form-control" style="font-family: monospace;" oninput="updateCalcPreview()">
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="height: 36px; justify-content: center;">
+        Generate Slip
+      </button>
+    </form>
+
+    <!-- Suggested Absence Deduction Hint -->
+    <div id="calcPreviewBox" style="margin-top: 1rem; padding: 0.75rem 1rem; background: white; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.775rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+      <div style="color: #475569;">
+        <span>Selected Base Salary: <strong id="previewBasic" style="color:#0f172a; font-family:monospace;">—</strong></span> &bull;
+        <span>Formula: <code>Net = (Basic / WorkingDays × Present) + Allowances - Deductions</code></span>
+      </div>
+      <div style="font-size: 0.7rem; color: #b45309; background: #fef3c7; padding: 0.2rem 0.5rem; border-radius: 4px;">
+        💡 Suggested absence deduction: <code>(basic / working_days) × absent_days</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- Period Filter & Totals -->
+  <div class="toolbar">
+    <form method="GET" action="{{ url_for('admin_payroll') }}" class="toolbar-filters">
+      <select name="month" class="form-control" style="width: auto;">
+        {% for m in range(1, 13) %}
+        <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ month_names[m] }}</option>
+        {% endfor %}
+      </select>
+
+      <select name="year" class="form-control" style="width: auto; font-family: monospace;">
+        {% for y in [2025, 2026, 2027] %}
+        <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+
+      <button type="submit" class="btn btn-secondary btn-sm">Filter Period</button>
+    </form>
+
+    <div style="display: flex; gap: 1.5rem; font-size: 0.8rem; font-family: monospace;">
+      <span>Gross: <strong style="color: #0f172a;">₹{{ "{:,.2f}".format(totals.gross) }}</strong></span>
+      <span>Deductions: <strong style="color: #dc2626;">-₹{{ "{:,.2f}".format(totals.deductions) }}</strong></span>
+      <span>Net Payable: <strong style="color: #059669; font-size: 0.95rem;">₹{{ "{:,.2f}".format(totals.net) }}</strong></span>
+    </div>
+  </div>
+
+  <!-- Payroll Ledger Table -->
+  <div class="card" style="padding: 0; overflow: hidden;">
+    <div class="table-responsive" style="border: none;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Department</th>
+            <th>Basic Salary</th>
+            <th>Allowances</th>
+            <th>Deductions</th>
+            <th>Attendance Units</th>
+            <th>Net Salary</th>
+            <th>Status</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in payroll_records %}
+          <tr>
+            <td>
+              <div style="font-weight: 700; color: #0f172a;">{{ p.employee_name }}</div>
+              <div style="font-size: 0.7rem; color: #64748b;">{{ p.designation }}</div>
+            </td>
+            <td style="color: #64748b;">{{ p.department_name }}</td>
+            <td style="font-family: monospace;">₹{{ "{:,.2f}".format(p.basic_salary) }}</td>
+            <td style="font-family: monospace; color: #059669;">+₹{{ "{:,.2f}".format(p.allowances) }}</td>
+            <td style="font-family: monospace; color: #dc2626;">-₹{{ "{:,.2f}".format(p.deductions) }}</td>
+            <td>
+              <span style="font-family: monospace; font-weight: 700; color: #1e40af;">{{ p.present_days }}</span> / {{ p.working_days }}d
+            </td>
+            <td style="font-family: monospace; font-weight: 800; color: #0f172a; font-size: 0.9rem;">
+              ₹{{ "{:,.2f}".format(p.net_salary) }}
+            </td>
+            <td>
+              {% if p.payment_status == 'Paid' %}
+              <span class="badge badge-paid">Paid</span>
+              {% else %}
+              <span class="badge badge-pending">Pending</span>
+              {% endif %}
+            </td>
+            <td style="text-align: right; white-space: nowrap;">
+              {% if p.payment_status == 'Pending' %}
+              <form method="POST" action="{{ url_for('admin_payroll_pay', payroll_id=p.payroll_id) }}" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
+                <button type="submit" class="btn btn-success btn-sm">Mark Paid</button>
+              </form>
+              {% endif %}
+              <a href="{{ url_for('salary_slip_view', payroll_id=p.payroll_id) }}" class="btn btn-primary btn-sm" target="_blank" title="Printable Salary Slip">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                <span>Slip</span>
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="9" style="text-align: center; color: #94a3b8; padding: 2rem;">No payroll records for {{ month_names[selected_month] }} {{ selected_year }}. Generate via the controls above!</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function updateCalcPreview() {
+  const sel = document.getElementById('calc_emp');
+  const opt = sel.options[sel.selectedIndex];
+  if (opt) {
+    const basic = parseFloat(opt.dataset.basic || 0);
+    document.getElementById('previewBasic').innerText = '₹' + basic.toLocaleString('en-IN', {minimumFractionDigits: 2});
+  }
+}
+document.addEventListener('DOMContentLoaded', updateCalcPreview);
+</script>
+{% endblock %}
+

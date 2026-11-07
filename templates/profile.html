@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}My Profile | TechNova EMS{% endblock %}
+
+{% block content %}
+<div style="max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem;">
+  
+  <div>
+    <h1 style="font-size: 1.35rem; font-weight: 800; color: #0f172a;">My Profile</h1>
+    <p style="font-size: 0.775rem; color: #64748b;">
+      Personal employment and contact records maintained in <code>smart_employee_db</code>.
+    </p>
+  </div>
+
+  <div class="card">
+    <div style="display: flex; align-items: center; gap: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid #e2e8f0; margin-bottom: 1.25rem;">
+      <div style="width: 64px; height: 64px; border-radius: 16px; background: #1e40af; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.75rem; font-weight: 800;">
+        {{ profile.employee_name[0] | upper }}
+      </div>
+      <div>
+        <h2 style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">{{ profile.employee_name }}</h2>
+        <p style="font-size: 0.8rem; color: #475569;">{{ profile.designation }} &bull; <strong style="color: #1e40af;">{{ profile.department_name }}</strong></p>
+        <span class="badge badge-present" style="margin-top: 0.25rem;">{{ profile.employment_status }} Employee</span>
+      </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('employee_profile') }}">
+      <input type="hidden" name="csrf_token" value="{{ session.get('csrf_token', '') }}">
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Employee ID</label>
+          <input type="text" class="form-control" value="EMP-{{ '%04d' | format(profile.employee_id) }}" disabled style="background: #f1f5f9; font-family: monospace; font-weight: 700;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Joining Date</label>
+          <input type="text" class="form-control" value="{{ profile.joining_date }}" disabled style="background: #f1f5f9; font-family: monospace;">
+        </div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="phone">Phone Number</label>
+          <input type="text" id="phone" name="phone" value="{{ profile.phone or '' }}" class="form-control" placeholder="+91 98765 00000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address (Immutable)</label>
+          <input type="email" class="form-control" value="{{ profile.email }}" disabled style="background: #f1f5f9;">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="address">Residential Address</label>
+        <input type="text" id="address" name="address" value="{{ profile.address or '' }}" class="form-control" placeholder="Street, City, State, PIN">
+      </div>
+
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-top: 1rem; margin-bottom: 1rem;">
+        <span style="font-size: 0.725rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Salary & Designation (Admin Managed)</span>
+        <div style="display: flex; justify-content: space-between; font-size: 0.825rem; margin-top: 0.5rem;">
+          <span style="color: #475569;">Basic Base Salary:</span>
+          <strong style="font-family: monospace; color: #0f172a;">₹{{ "{:,.2f}".format(profile.basic_salary) }}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.825rem; margin-top: 0.25rem;">
+          <span style="color: #475569;">Department:</span>
+          <strong style="color: #0f172a;">{{ profile.department_name }}</strong>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+        <button type="submit" class="btn btn-primary">
+          Save Contact Updates
+        </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}
+
