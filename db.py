@@ -50,6 +50,8 @@ def execute_query(sql, params=None, fetchone=False, fetchall=False, commit=False
             result = cursor.fetchone()
         elif fetchall:
             result = cursor.fetchall()
+        elif cursor.with_rows:
+            result = cursor.fetchall()
         else:
             result = {
                 'last_insert_id': cursor.lastrowid,
