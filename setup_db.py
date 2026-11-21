@@ -125,6 +125,7 @@ def run_setup():
         'procedures.sql',
         'triggers.sql',
         'sample_data.sql',
+        'activity_log.sql',
         'access_control.sql'
     ]
 

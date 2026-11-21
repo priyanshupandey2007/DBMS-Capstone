@@ -14,7 +14,10 @@ import {
   AlertTriangle,
   Building,
   CheckCircle,
-  ShieldAlert
+  ShieldAlert,
+  FileSpreadsheet,
+  Download,
+  Activity
 } from 'lucide-react';
 
 export default function EmployeeList() {
@@ -29,9 +32,12 @@ export default function EmployeeList() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
+  const [showActivityModal, setShowActivityModal] = useState(false);
   const [currentEmp, setCurrentEmp] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [activityLogs, setActivityLogs] = useState([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
+  const [loadingActivity, setLoadingActivity] = useState(false);
 
   // Form state
   const initialForm = {
@@ -115,7 +121,7 @@ export default function EmployeeList() {
     setShowEditModal(true);
   };
 
-  // View Audit Trail
+  // View Salary Audit Trail
   const handleOpenAudit = async (emp) => {
     setCurrentEmp(emp);
     setShowAuditModal(true);
@@ -129,6 +135,22 @@ export default function EmployeeList() {
       console.error(err);
     } finally {
       setLoadingAudit(false);
+    }
+  };
+
+  // View Add / Remove Activity History
+  const handleOpenActivity = async () => {
+    setShowActivityModal(true);
+    setLoadingActivity(true);
+    try {
+      const res = await api.getActivityLog();
+      if (res.success) {
+        setActivityLogs(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingActivity(false);
     }
   };
 
@@ -207,18 +229,58 @@ export default function EmployeeList() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Employee Directory</h1>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center space-x-2">
+            <span>Employee Directory</span>
+            <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+              MySQL 8 &bull; smart_employee_db
+            </span>
+          </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Complete CRUD operations adhering to 3NF schema, check constraints, and cascade relationships.
+            Dynamic database sync: additions and removals trigger real-time logging and instant Excel (.csv) export.
           </p>
         </div>
-        <button
-          onClick={handleOpenAdd}
-          className="inline-flex items-center space-x-2 px-3.5 py-2 bg-brand-800 hover:bg-brand-900 text-white rounded-lg text-xs font-semibold shadow-sm transition"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add New Employee</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Export Current Roster to Excel */}
+          <a
+            href={api.getEmployeesExportUrl()}
+            download
+            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+            title="Download active database roster as an Excel (CSV) spreadsheet"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Export Roster (Excel)</span>
+          </a>
+
+          {/* Export Audit Log to Excel */}
+          <a
+            href={api.getAuditExportUrl()}
+            download
+            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+            title="Download full Add / Remove history as an Excel (CSV) spreadsheet"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export Audit Sheet</span>
+          </a>
+
+          {/* View Add / Remove Activity History Modal */}
+          <button
+            onClick={handleOpenActivity}
+            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+            title="View dynamic live log of additions, deletions, and status toggles"
+          >
+            <Activity className="w-3.5 h-3.5" />
+            <span>Activity History</span>
+          </button>
+
+          {/* Add Employee */}
+          <button
+            onClick={handleOpenAdd}
+            className="inline-flex items-center space-x-2 px-3.5 py-2 bg-brand-800 hover:bg-brand-900 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New Employee</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -699,6 +761,117 @@ export default function EmployeeList() {
               <button
                 onClick={() => setShowAuditModal(false)}
                 className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs rounded-lg font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADD/REMOVE & STATUS ACTIVITY LOG MODAL */}
+      {showActivityModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] flex flex-col border border-slate-200">
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50 rounded-t-xl">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+                  <Activity className="w-4 h-4 text-brand-700" />
+                  <span>Dynamic User Add / Remove Activity History</span>
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Real-time trigger logging of additions, deletions, and status toggles in MySQL <code className="font-mono font-semibold">employee_activity_log</code>.
+                </p>
+              </div>
+              <button onClick={() => setShowActivityModal(false)} className="p-1 text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-emerald-50 text-emerald-800 text-xs px-4">
+              <span>Automatic sync: Any added or deleted user is permanently recorded here and exported to Excel.</span>
+              <a
+                href={api.getAuditExportUrl()}
+                download
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-md font-semibold transition text-xs shadow-sm"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Download as Excel Sheet</span>
+              </a>
+            </div>
+
+            <div className="p-4 overflow-y-auto flex-1">
+              {loadingActivity ? (
+                <div className="py-8 text-center text-slate-400 text-xs">Querying employee_activity_log table...</div>
+              ) : activityLogs.length === 0 ? (
+                <div className="py-8 text-center text-slate-400 text-xs">No activity records logged yet.</div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 text-slate-600 uppercase font-semibold">
+                      <tr>
+                        <th className="py-2.5 px-3">Date & Time</th>
+                        <th className="py-2.5 px-3">Action</th>
+                        <th className="py-2.5 px-3">Employee</th>
+                        <th className="py-2.5 px-3">Department & Role</th>
+                        <th className="py-2.5 px-3">Details</th>
+                        <th className="py-2.5 px-3">User</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {activityLogs.map((log) => {
+                        const isAdd = log.action_type === 'USER_ADDED';
+                        const isRemove = log.action_type === 'USER_REMOVED';
+                        const isDeact = log.action_type === 'USER_DEACTIVATED';
+                        const badgeColor = isAdd
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                          : isRemove
+                          ? 'bg-red-100 text-red-800 border-red-300'
+                          : isDeact
+                          ? 'bg-amber-100 text-amber-800 border-amber-300'
+                          : 'bg-blue-100 text-blue-800 border-blue-300';
+                        return (
+                          <tr key={log.log_id} className="hover:bg-slate-50">
+                            <td className="py-2.5 px-3 text-slate-500 font-mono text-[11px] whitespace-nowrap">
+                              {log.logged_at}
+                            </td>
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${badgeColor}`}>
+                                {log.action_type.replace(/_/g, ' ')}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 font-semibold text-slate-900 whitespace-nowrap">
+                              {log.employee_name}
+                              {log.employee_id && (
+                                <span className="block text-[10px] text-slate-400 font-normal">
+                                  EMP-{String(log.employee_id).padStart(4, '0')}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">
+                              <div>{log.department_name}</div>
+                              <div className="text-[10px] text-slate-400">{log.designation}</div>
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-600 max-w-xs">
+                              {log.details}
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-500 font-mono text-[11px] whitespace-nowrap">
+                              {log.performed_by}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="p-3 border-t border-slate-200 bg-slate-50 rounded-b-xl flex justify-between items-center text-xs text-slate-500">
+              <span>Dynamic log maintained in MySQL 8 <code>smart_employee_db</code> via Triggers.</span>
+              <button
+                onClick={() => setShowActivityModal(false)}
+                className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded font-medium transition"
               >
                 Close
               </button>

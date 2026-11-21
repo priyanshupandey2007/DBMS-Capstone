@@ -56,6 +56,9 @@ export const api = {
   toggleEmployeeStatus: (id, status) => request(`/employees/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   deleteEmployee: (id) => request(`/employees/${id}`, { method: 'DELETE' }),
   getSalaryAudit: (id) => request(`/employees/${id}/audit`),
+  getActivityLog: () => request('/employees/activity-log'),
+  getEmployeesExportUrl: () => '/api/employees/export/csv',
+  getAuditExportUrl: () => '/api/employees/export/audit-csv',
 
   // Departments
   getDepartments: () => request('/departments'),

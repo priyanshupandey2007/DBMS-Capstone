@@ -341,6 +341,79 @@ def employees_list():
         selected_status=status
     )
 
+@app.route('/admin/employees/export-csv')
+@admin_required
+def export_employees_csv():
+    employees = db.execute_query("""
+        SELECT e.employee_id, e.employee_name, e.email, e.phone, e.gender,
+               e.date_of_birth, e.joining_date,
+               COALESCE(d.department_name, 'Unassigned') AS department_name,
+               e.designation, e.basic_salary, e.employment_status
+        FROM employees e
+        LEFT JOIN departments d ON e.department_id = d.department_id
+        ORDER BY e.employee_id ASC
+    """, fetchall=True)
+
+    output = io.StringIO()
+    output.write('\ufeff')
+    writer = csv.writer(output)
+    writer.writerow([
+        'Employee ID', 'Employee Name', 'Email Address', 'Phone Number',
+        'Gender', 'Date of Birth', 'Joining Date', 'Department',
+        'Designation', 'Basic Salary (INR)', 'Employment Status'
+    ])
+    for emp in employees:
+        writer.writerow([
+            emp['employee_id'], emp['employee_name'], emp['email'],
+            emp.get('phone') or 'N/A', emp.get('gender') or 'N/A',
+            emp.get('date_of_birth') or 'N/A', emp['joining_date'],
+            emp['department_name'], emp['designation'],
+            float(emp['basic_salary']), emp['employment_status']
+        ])
+    
+    filename = f"TechNova_Employees_Roster_{datetime.now().strftime('%Y-%m-%d')}.csv"
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@app.route('/admin/employees/export-audit-csv')
+@admin_required
+def export_employee_audit_csv():
+    logs = db.execute_query("""
+        SELECT log_id, action_type, employee_id, employee_name, email,
+               department_name, designation, basic_salary, details, performed_by,
+               logged_at
+        FROM employee_activity_log
+        ORDER BY log_id DESC
+    """, fetchall=True)
+
+    output = io.StringIO()
+    output.write('\ufeff')
+    writer = csv.writer(output)
+    writer.writerow([
+        'Log ID', 'Action Type', 'Employee ID', 'Employee Name', 'Email Address',
+        'Department', 'Designation', 'Basic Salary (INR)', 'Activity Details',
+        'Performed By', 'Logged At (Date & Time)'
+    ])
+    for log in logs:
+        writer.writerow([
+            log['log_id'], log['action_type'], log['employee_id'] or 'N/A',
+            log['employee_name'], log.get('email') or 'N/A',
+            log.get('department_name') or 'N/A', log.get('designation') or 'N/A',
+            float(log['basic_salary']) if log.get('basic_salary') else 0.0,
+            log.get('details') or '', log.get('performed_by') or 'Admin',
+            str(log['logged_at'])
+        ])
+    
+    filename = f"TechNova_User_Add_Remove_Audit_{datetime.now().strftime('%Y-%m-%d')}.csv"
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
 @app.route('/admin/employees/add', methods=['GET', 'POST'])
 @admin_required
 def employee_add():

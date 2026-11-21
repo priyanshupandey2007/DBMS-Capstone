@@ -65,6 +65,149 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 /**
+ * GET /api/employees/activity-log
+ * Retrieve dynamic add, remove, and status change audit logs
+ */
+router.get('/activity-log', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const logs = await db.query(
+      `SELECT log_id, action_type, employee_id, employee_name, email,
+              department_name, designation, basic_salary, details, performed_by,
+              DATE_FORMAT(logged_at, '%Y-%m-%d %H:%i:%s') AS logged_at
+       FROM employee_activity_log
+       ORDER BY log_id DESC
+       LIMIT 200`
+    );
+    res.json({ success: true, count: logs.length, data: logs });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/employees/export/csv
+ * Generates an Excel-compatible CSV download of current employees
+ */
+router.get('/export/csv', async (req, res) => {
+  try {
+    const employees = await db.query(
+      `SELECT e.employee_id, e.employee_name, e.email, e.phone, e.gender,
+              DATE_FORMAT(e.date_of_birth, '%Y-%m-%d') AS date_of_birth,
+              DATE_FORMAT(e.joining_date, '%Y-%m-%d') AS joining_date,
+              COALESCE(d.department_name, 'Unassigned') AS department_name,
+              e.designation, e.basic_salary, e.employment_status
+       FROM employees e
+       LEFT JOIN departments d ON e.department_id = d.department_id
+       ORDER BY e.employee_id ASC`
+    );
+
+    const headers = [
+      'Employee ID',
+      'Employee Name',
+      'Email Address',
+      'Phone Number',
+      'Gender',
+      'Date of Birth',
+      'Joining Date',
+      'Department',
+      'Designation',
+      'Basic Salary (INR)',
+      'Employment Status'
+    ];
+
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    let csv = '\uFEFF' + headers.join(',') + '\n';
+    employees.forEach(emp => {
+      csv += [
+        emp.employee_id,
+        escapeCsv(emp.employee_name),
+        escapeCsv(emp.email),
+        escapeCsv(emp.phone || 'N/A'),
+        escapeCsv(emp.gender),
+        escapeCsv(emp.date_of_birth || 'N/A'),
+        escapeCsv(emp.joining_date),
+        escapeCsv(emp.department_name),
+        escapeCsv(emp.designation),
+        emp.basic_salary,
+        escapeCsv(emp.employment_status)
+      ].join(',') + '\n';
+    });
+
+    const filename = `TechNova_Employees_Roster_${new Date().toISOString().slice(0, 10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (error) {
+    res.status(500).send('Error generating employee Excel/CSV export: ' + error.message);
+  }
+});
+
+/**
+ * GET /api/employees/export/audit-csv
+ * Generates an Excel-compatible CSV export of user additions and removals
+ */
+router.get('/export/audit-csv', async (req, res) => {
+  try {
+    const logs = await db.query(
+      `SELECT log_id, action_type, employee_id, employee_name, email,
+              department_name, designation, basic_salary, details, performed_by,
+              DATE_FORMAT(logged_at, '%Y-%m-%d %H:%i:%s') AS logged_at
+       FROM employee_activity_log
+       ORDER BY log_id DESC`
+    );
+
+    const headers = [
+      'Log ID',
+      'Action Type',
+      'Employee ID',
+      'Employee Name',
+      'Email Address',
+      'Department',
+      'Designation',
+      'Basic Salary (INR)',
+      'Activity Details',
+      'Performed By',
+      'Logged At (Date & Time)'
+    ];
+
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    let csv = '\uFEFF' + headers.join(',') + '\n';
+    logs.forEach(log => {
+      csv += [
+        log.log_id,
+        escapeCsv(log.action_type),
+        log.employee_id || 'N/A',
+        escapeCsv(log.employee_name),
+        escapeCsv(log.email || 'N/A'),
+        escapeCsv(log.department_name || 'N/A'),
+        escapeCsv(log.designation || 'N/A'),
+        log.basic_salary || '0.00',
+        escapeCsv(log.details || ''),
+        escapeCsv(log.performed_by || 'Admin'),
+        escapeCsv(log.logged_at)
+      ].join(',') + '\n';
+    });
+
+    const filename = `TechNova_User_Add_Remove_Audit_${new Date().toISOString().slice(0, 10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (error) {
+    res.status(500).send('Error generating audit log export: ' + error.message);
+  }
+});
+
+/**
  * GET /api/employees/:id
  * Get single employee profile by ID (Admin or Self)
  */

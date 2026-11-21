@@ -123,7 +123,8 @@ async function initializeDatabase() {
       'functions.sql',
       'procedures.sql',
       'triggers.sql',
-      'sample_data.sql'
+      'sample_data.sql',
+      'activity_log.sql'
     ];
 
     for (const file of sqlFiles) {
