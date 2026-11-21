@@ -18,22 +18,26 @@ export default function AdminDashboard({ setActiveTab }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const loadData = async () => {
+  const loadData = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await api.getAdminDashboard();
       if (res.success) {
         setData(res);
       }
     } catch (err) {
-      setError(err.message);
+      if (!silent) setError(err.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    loadData(false);
+    const liveInterval = setInterval(() => {
+      loadData(true);
+    }, 4000);
+    return () => clearInterval(liveInterval);
   }, []);
 
   if (loading) {

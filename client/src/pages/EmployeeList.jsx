@@ -17,7 +17,9 @@ import {
   ShieldAlert,
   FileSpreadsheet,
   Download,
-  Activity
+  Activity,
+  RefreshCw,
+  Radio
 } from 'lucide-react';
 
 export default function EmployeeList() {
@@ -27,6 +29,10 @@ export default function EmployeeList() {
   const [search, setSearch] = useState('');
   const [selectedDept, setSelectedDept] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+
+  // Live Auto-Sync State
+  const [lastSyncTime, setLastSyncTime] = useState(new Date());
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Modals state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -58,9 +64,11 @@ export default function EmployeeList() {
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
+      else setIsSyncing(true);
+
       const params = {};
       if (search) params.search = search;
       if (selectedDept) params.department_id = selectedDept;
@@ -69,11 +77,13 @@ export default function EmployeeList() {
       const res = await api.getEmployees(params);
       if (res.success) {
         setEmployees(res.data);
+        setLastSyncTime(new Date());
       }
     } catch (err) {
-      console.error(err);
+      console.error('Fetch error:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+      else setIsSyncing(false);
     }
   };
 
@@ -90,9 +100,24 @@ export default function EmployeeList() {
     fetchDepartments();
   }, []);
 
+  // Fetch when search / filters change
   useEffect(() => {
-    fetchEmployees();
+    fetchEmployees(false);
   }, [search, selectedDept, statusFilter]);
+
+  // Real-time live background polling every 3 seconds
+  useEffect(() => {
+    const liveInterval = setInterval(() => {
+      fetchEmployees(true);
+      if (showActivityModal) {
+        api.getActivityLog().then(res => {
+          if (res.success) setActivityLogs(res.data);
+        }).catch(() => {});
+      }
+    }, 3000);
+
+    return () => clearInterval(liveInterval);
+  }, [search, selectedDept, statusFilter, showActivityModal]);
 
   // Open Add Modal
   const handleOpenAdd = () => {
@@ -229,15 +254,32 @@ export default function EmployeeList() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center space-x-2">
-            <span>Employee Directory</span>
+          <div className="flex items-center space-x-3">
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Employee Directory</h1>
             <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
               MySQL 8 &bull; smart_employee_db
             </span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Dynamic database sync: additions and removals trigger real-time logging and instant Excel (.csv) export.
-          </p>
+          </div>
+          <div className="flex items-center space-x-2 mt-1.5 text-xs text-slate-500">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="text-emerald-700 font-semibold font-mono text-[11px]">
+              LIVE DATABASE SYNC ACTIVE
+            </span>
+            <span className="text-slate-300">&bull;</span>
+            <span className="text-slate-400 text-[11px]">
+              Auto-refreshing every 3s (Last: {lastSyncTime.toLocaleTimeString()})
+            </span>
+            <button
+              onClick={() => fetchEmployees(false)}
+              className="p-1 hover:text-brand-800 text-slate-400 rounded transition"
+              title="Force sync with MySQL immediately"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-brand-700' : ''}`} />
+            </button>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* Export Current Roster to Excel */}
